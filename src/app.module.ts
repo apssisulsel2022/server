@@ -16,6 +16,7 @@ import { Player } from './players/entities/player.entity';
 import { Tournament } from './tournaments/entities/tournament.entity';
 import { MatchesModule } from './matches/matches.module';
 import { PaymentsModule } from './payments/payments.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { PaymentsModule } from './payments/payments.module';
     TournamentsModule,
     MatchesModule,
     PaymentsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
