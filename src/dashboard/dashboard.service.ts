@@ -1,26 +1,77 @@
 import { Injectable } from '@nestjs/common';
-import { CreateDashboardDto } from './dto/create-dashboard.dto';
-import { UpdateDashboardDto } from './dto/update-dashboard.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Tournament } from '../tournaments/entities/tournament.entity';
+import { Match, MatchStatus } from '../matches/entities/match.entity';
+import { Player } from '../players/entities/player.entity';
+import { MatchesService } from '../matches/matches.service';
 
 @Injectable()
 export class DashboardService {
-  create(createDashboardDto: CreateDashboardDto) {
-    return 'This action adds a new dashboard';
+  constructor(
+    @InjectRepository(Tournament)
+    private tournamentsRepository: Repository<Tournament>,
+    @InjectRepository(Match)
+    private matchesRepository: Repository<Match>,
+    @InjectRepository(Player)
+    private playersRepository: Repository<Player>,
+    private matchesService: MatchesService,
+  ) {}
+
+  async getTournaments() {
+    return this.tournamentsRepository.find({
+        order: { startDate: 'DESC' },
+        where: { status: 'ongoing' } // Or open/finished too, maybe filter by query
+    });
   }
 
-  findAll() {
-    return `This action returns all dashboard`;
-  }
+  async getTournamentDetails(id: string) {
+      const tournament = await this.tournamentsRepository.findOne({ where: { id } });
+      const standings = await this.matchesService.getStandings(id);
+      
+      const matches = await this.matchesRepository.find({
+          where: { tournament: { id } },
+          relations: ['homeTeam', 'awayTeam'],
+          order: { matchDate: 'ASC' }
+      });
 
-  findOne(id: number) {
-    return `This action returns a #${id} dashboard`;
-  }
+      // Top Scorers Logic
+      const allMatches = await this.matchesRepository.find({
+          where: { tournament: { id }, status: MatchStatus.FINISHED }
+      });
+      
+      const scorerMap = new Map<string, { player: any, goals: number }>();
+      
+      for (const match of allMatches) {
+          if (match.goalScorers) {
+              for (const goal of match.goalScorers) {
+                  if (!scorerMap.has(goal.playerId)) {
+                      // Fetch player details (optimized: ideally fetch all involved players once)
+                      const player = await this.playersRepository.findOne({ 
+                          where: { id: goal.playerId },
+                          relations: ['club']
+                      });
+                      if (player) {
+                          scorerMap.set(goal.playerId, { player, goals: 0 });
+                      }
+                  }
+                  
+                  if (scorerMap.has(goal.playerId)) {
+                      scorerMap.get(goal.playerId)!.goals++;
+                  }
+              }
+          }
+      }
 
-  update(id: number, updateDashboardDto: UpdateDashboardDto) {
-    return `This action updates a #${id} dashboard`;
-  }
+      const topScorers = Array.from(scorerMap.values())
+          .sort((a, b) => b.goals - a.goals)
+          .slice(0, 5); // Top 5
 
-  remove(id: number) {
-    return `This action removes a #${id} dashboard`;
+      return {
+          tournament,
+          standings,
+          matches,
+          topScorers
+      };
   }
 }
