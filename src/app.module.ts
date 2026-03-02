@@ -15,6 +15,7 @@ import { Club } from './clubs/entities/club.entity';
 import { Player } from './players/entities/player.entity';
 import { Tournament } from './tournaments/entities/tournament.entity';
 import { MatchesModule } from './matches/matches.module';
+import { PaymentsModule } from './payments/payments.module';
 
 @Module({
   imports: [
@@ -45,6 +46,7 @@ import { MatchesModule } from './matches/matches.module';
     PlayersModule,
     TournamentsModule,
     MatchesModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
